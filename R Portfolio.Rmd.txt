@@ -1,0 +1,65 @@
+---
+title: "R Portfolio"
+output: html_document
+---
+*Knit this R markdown file, read and understand the html file, then edit and knit the R markdown file to showcase your evidence. Save the html file for submission.*
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{css, echo=FALSE}
+div.warning {
+    padding: 1em;
+    margin: 1em 0;
+    padding-left: 100px;
+    background-size: 70px;
+    background-repeat: no-repeat;
+    background-position: 15px center;
+    min-height: 120px;
+    color: #000000;
+    background-color: #bed3ec;
+    border: solid 5px #dfedff;
+  }
+```
+
+:::warning
+* **Please read the briefing sheet and guidance on Moodle carefully before completing the portfolio.**
+
+
+:::
+
+Please ensure that the evidence covers all of the following learning objectives:
+
+LO1: Can apply methods concerning estimation of parameters in standard statistical models; in particular the method of moments and the maximum likelihood method.
+
+LO2: Can perform statistical hypotheses tests using data from studies (such as t and F-tests, comparison of models and parameter values).
+
+LO3: Can apply methods for interval estimation; in particular, exact and approximate confidence intervals based on asymptotic theory.
+
+LO4: Can apply methods for analysing categorical data.
+
+
+## Evidence 1
+
+Learning objective(s) assessed: **Please add here e.g. L01**
+
+Please show any evidence for one (or more) of the learning objectives here. You may add R code as in the following.
+
+```{r}
+# Any R code here
+```
+
+**Any writing here**
+
+
+
+## Evidence 2
+
+Learning objective(s) assessed: **Please add here e.g. L01**
+
+Please add new evidence and subsections as necessary.
+
+
+
