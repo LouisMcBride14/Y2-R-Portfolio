@@ -1,0 +1,109 @@
+---
+title: "EVD1"
+author: "Louis"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Set-up
+
+```{r data-import, include=FALSE}
+library(dplyr)
+library(MASS)
+
+
+# Keeps 'random' consistent
+set.seed(123)
+
+dat <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
+```
+
+```{r filter-outliers}
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(column, 0.25)
+  Q3 <- quantile(column, 0.75)
+  IQR <- Q3 - Q1
+  
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q1 + 1.5 * IQR
+  
+  filtered_df <- df[column >= lower_bound & column <= upper_bound,]
+  
+  return(filtered_df)
+}
+```
+
+```{r agg-by-day, include=FALSE}
+# Convert timestamp to POSIXct if it's not already
+dat$data_collection_log_timestamp <- as.POSIXct(dat$data_collection_log_timestamp)
+
+# Group by day and summarize
+agg <- dat %>%
+  group_by(date = as.Date(data_collection_log_timestamp)) %>%
+  summarize(mean_value = mean(Total_consumption_active_import), total_value = sum(Total_consumption_active_import))
+
+# View the aggregated dataframe
+print(agg)
+```
+
+```{r agg-by-sub, include=FALSE}
+dat <- dat[dat$data_collection_log_timestamp < "2024-02-01",]
+
+# Group by day and summarize
+agg <- dat %>%
+  group_by(secondary_substation_id) %>%
+  summarize(mean_value = mean(Total_consumption_active_import), total_value = sum(Total_consumption_active_import))
+
+# View the aggregated dataframe
+print(agg)
+```
+
+```{r sample, include=FALSE}
+samp <- dat %>% 
+  sample_frac(0.0001, replace = FALSE)
+```
+
+## Histogram
+
+```{r histogram, echo=FALSE}
+
+filt <- remove_outliers(agg, agg$mean_value)
+
+print(max(filt$mean_value))
+
+hist(filt$mean_value, breaks = seq(min(filt$mean_value), max(filt$mean_value), length.out = 20))
+```
+
+```{r hist2, echo=FALSE}
+filt <- remove_outliers(dat, dat$Total_consumption_active_import)
+
+print(max(filt$Total_consumption_active_import))
+
+hist(filt$Total_consumption_active_import, breaks = seq(min(filt$Total_consumption_active_import), max(filt$Total_consumption_active_import), length.out = 20))
+```
+
+```{r import_per_device_mle}
+dat$import_per_device <- dat$Total_consumption_active_import / dat$aggregated_device_count_Active
+
+filt <- remove_outliers(dat, dat$import_per_device)
+
+hist(filt$import_per_device, breaks = seq(min(filt$import_per_device), max(filt$import_per_device), length.out = 30))
+
+# Fit normal distribution to the subset data
+fit_norm <- fitdistr(filt$import_per_device, densfun = "normal")
+print(fit_norm)
+
+test_data <- rnorm(10000,mean=223.6,sd=92.2)
+hist(test_data, breaks = 30)
+```
+
+```{r import_per_device_conf_int}
+conf_intervals <- confint(fit_norm, level=0.95)
+
+print(conf_intervals)
+```
+
