@@ -1,0 +1,88 @@
+---
+title: "EVD1"
+author: "Louis"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Set-up
+
+```{r data-import, include=FALSE}
+library(dplyr)
+library(MASS)
+library(tidyverse)
+library(DescTools)
+
+
+# Keeps 'random' consistent
+set.seed(123)
+
+# Loads SM Volume data
+dat <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\sm-vols-jan24-dummy.csv')
+```
+
+```{r filter-outliers}
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(column, 0.25)
+  Q3 <- quantile(column, 0.75)
+  IQR <- Q3 - Q1
+  
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q1 + 1.5 * IQR
+  
+  filtered_df <- df[column >= lower_bound & column <= upper_bound,]
+  
+  return(filtered_df)
+}
+```
+
+## Turn data into contingency table
+
+```{r contingency-table}
+LAs = unique(dat$Licence_Area)
+
+
+tab_dat = c()
+for (LA in LAs) {
+  filtered <- dat[dat$Licence_Area == LA,]
+  
+  S1 = sum(filtered$SMETS1)
+  S2 = sum(filtered$SMETS2)
+  nonS = sum(filtered$NON_SMART)
+  
+  row_dat = c(S1, S2, nonS)
+  
+  tab_dat = append(tab_dat, row_dat)
+}
+
+tab <- matrix(tab_dat, nrow=3, ncol=length(LAs), dimnames=list(c("SMETS1","SMETS2","NON SMART"),LAs))
+
+print(tab)
+```
+
+Using this table we can test for the independence of the variables 'Licence Area' and 'Meter Type'.
+
+$H_0:$ The meter type is independent of which licence area it resides in.
+$vs.$
+$H_1:$ The meter type depends on which licence area the meter resides in.
+
+Under $H_0$ for large $n$ (which is applicable here as n = 8,124,921), 
+
+$-2\log(\Lambda)\sim \chi_{(J-1)(K-1)}^{2} \space approximately,$
+
+$-2\log(\Lambda)=2\sum\limits_{j=1}^{J}\sum\limits_{k=1}^{K}y_{jk}\log\left(\frac{y_{jk}}{\hat{e}_{jk}}\right)$
+
+$\hat{e}_{jk}=\frac{y_{j\bullet}y_{\bullet k}}{n}$
+
+```{r G-Test}
+results <- GTest(tab,correct="none")
+
+print(results)
+```
+
+The p-value for this test is `r results$p.value` which is much less than 0.01. This suggests there is overwhelming evidence to reject the null hypothesis ($H_0$) and we can say the variables are not independent. This suggests that different areas have different levels of uptake of smart meters compared to others. 
+

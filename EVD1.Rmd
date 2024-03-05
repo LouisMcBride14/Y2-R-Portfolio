@@ -37,56 +37,10 @@ remove_outliers <- function(df, column) {
 }
 ```
 
-```{r agg-by-day, include=FALSE}
-# Convert timestamp to POSIXct if it's not already
-dat$data_collection_log_timestamp <- as.POSIXct(dat$data_collection_log_timestamp)
-
-# Group by day and summarize
-agg <- dat %>%
-  group_by(date = as.Date(data_collection_log_timestamp)) %>%
-  summarize(mean_value = mean(Total_consumption_active_import), total_value = sum(Total_consumption_active_import))
-
-# View the aggregated dataframe
-print(agg)
-```
-
-```{r agg-by-sub, include=FALSE}
-dat <- dat[dat$data_collection_log_timestamp < "2024-02-01",]
-
-# Group by day and summarize
-agg <- dat %>%
-  group_by(secondary_substation_id) %>%
-  summarize(mean_value = mean(Total_consumption_active_import), total_value = sum(Total_consumption_active_import))
-
-# View the aggregated dataframe
-print(agg)
-```
-
-```{r sample, include=FALSE}
-samp <- dat %>% 
-  sample_frac(0.0001, replace = FALSE)
-```
-
 ## Histogram
 
-```{r histogram, echo=FALSE}
 
-filt <- remove_outliers(agg, agg$mean_value)
-
-print(max(filt$mean_value))
-
-hist(filt$mean_value, breaks = seq(min(filt$mean_value), max(filt$mean_value), length.out = 20))
-```
-
-```{r hist2, echo=FALSE}
-filt <- remove_outliers(dat, dat$Total_consumption_active_import)
-
-print(max(filt$Total_consumption_active_import))
-
-hist(filt$Total_consumption_active_import, breaks = seq(min(filt$Total_consumption_active_import), max(filt$Total_consumption_active_import), length.out = 20))
-```
-
-```{r import_per_device_mle}
+```{r import_per_device_mle_norm}
 dat$import_per_device <- dat$Total_consumption_active_import / dat$aggregated_device_count_Active
 
 filt <- remove_outliers(dat, dat$import_per_device)
@@ -97,7 +51,7 @@ hist(filt$import_per_device, breaks = seq(min(filt$import_per_device), max(filt$
 fit_norm <- fitdistr(filt$import_per_device, densfun = "normal")
 print(fit_norm)
 
-test_data <- rnorm(10000,mean=223.6,sd=92.2)
+test_data <- rnorm(10000,mean=fit_norm$estimate['mean'],sd=fit_norm$estimate['sd'])
 hist(test_data, breaks = 30)
 ```
 
@@ -106,4 +60,42 @@ conf_intervals <- confint(fit_norm, level=0.95)
 
 print(conf_intervals)
 ```
+```{r import_per_device_mle_trunc_norm}
+dat$import_per_device <- dat$Total_consumption_active_import / dat$aggregated_device_count_Active
 
+filt <- remove_outliers(dat, dat$import_per_device)
+
+hist(filt$import_per_device, breaks = seq(min(filt$import_per_device), max(filt$import_per_device), length.out = 30))
+
+# Fit normal distribution to the subset data
+fit_norm <- fitdistr(filt$import_per_device, densfun = "normal", lower=0)
+print(fit_norm)
+
+library(truncnorm)
+
+# Generate random data from a truncated normal distribution with lower bound 0
+test_data <- rtruncnorm(10000, a = 0, b = 500, mean = fit_norm$estimate[1], sd = fit_norm$estimate[2])
+hist(test_data, breaks = 30)
+```
+
+
+
+
+```{r import_per_device_mle_gamma}
+dat$import_per_device <- dat$Total_consumption_active_import / dat$aggregated_device_count_Active
+
+filt <- remove_outliers(dat, dat$import_per_device)
+
+filt$import_per_device <- filt$import_per_device + 1 # Ensures no 0 values
+
+hist(filt$import_per_device, breaks = seq(min(filt$import_per_device), max(filt$import_per_device), length.out = 30))
+
+# Fit normal distribution to the subset data
+fit_gam <- fitdistr(filt$import_per_device,"gamma")
+print(fit_gam)
+```
+
+```{r yuuhhh}
+test_data <- rgamma(10000,shape=fit_gam$estimate['shape'],rate=fit_gam$estimate['rate'])
+hist(test_data, breaks = 50)
+```

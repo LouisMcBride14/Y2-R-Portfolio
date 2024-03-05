@@ -9,9 +9,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Louis" />
 
+<meta name="date" content="2024-03-05" />
 
-<title>R Portfolio</title>
+<title>EVD1</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -348,53 +350,78 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">R Portfolio</h1>
+<h1 class="title toc-ignore">EVD1</h1>
+<h4 class="author">Louis</h4>
+<h4 class="date">2024-03-05</h4>
 
 </div>
 
 
-<p><em>Knit this R markdown file, read and understand the html file,
-then edit and knit the R markdown file to showcase your evidence. Save
-the html file for submission.</em></p>
-<style type="text/css">
-div.warning {
-padding: 1em;
-margin: 1em 0;
-padding-left: 100px;
-background-size: 70px;
-background-repeat: no-repeat;
-background-position: 15px center;
-min-height: 120px;
-color: #000000;
-background-color: #bed3ec;
-border: solid 5px #dfedff;
+<div id="data-set-up" class="section level2">
+<h2>Data Set-up</h2>
+<pre class="r"><code>remove_outliers &lt;- function(df, column) {
+  Q1 &lt;- quantile(column, 0.25)
+  Q3 &lt;- quantile(column, 0.75)
+  IQR &lt;- Q3 - Q1
+  
+  lower_bound &lt;- Q1 - 1.5 * IQR
+  upper_bound &lt;- Q1 + 1.5 * IQR
+  
+  filtered_df &lt;- df[column &gt;= lower_bound &amp; column &lt;= upper_bound,]
+  
+  return(filtered_df)
+}</code></pre>
+</div>
+<div id="turn-data-into-contingency-table" class="section level2">
+<h2>Turn data into contingency table</h2>
+<pre class="r"><code>LAs = unique(dat$Licence_Area)
+
+
+tab_dat = c()
+for (LA in LAs) {
+  filtered &lt;- dat[dat$Licence_Area == LA,]
+  
+  S1 = sum(filtered$SMETS1)
+  S2 = sum(filtered$SMETS2)
+  nonS = sum(filtered$NON_SMART)
+  
+  row_dat = c(S1, S2, nonS)
+  
+  tab_dat = append(tab_dat, row_dat)
 }
-</style>
-<p>:::warning * <strong>Please read the briefing sheet and guidance on
-Moodle carefully before completing the portfolio.</strong></p>
-<p>:::</p>
-<p>Please ensure that the evidence covers all of the following learning
-objectives:</p>
-<p>LO1: Can apply methods concerning estimation of parameters in
-standard statistical models; in particular the method of moments and the
-maximum likelihood method.</p>
-<p>LO2: Can perform statistical hypotheses tests using data from studies
-(such as t and F-tests, comparison of models and parameter values).</p>
-<p>LO3: Can apply methods for interval estimation; in particular, exact
-and approximate confidence intervals based on asymptotic theory.</p>
-<p>LO4: Can apply methods for analysing categorical data.</p>
-<div id="evidence-1" class="section level2">
-<h2>Evidence 1</h2>
-<p>Learning objective(s) assessed: <strong>Please add here
-e.g. L01</strong></p>
-<p>Please show any evidence for one (or more) of the learning objectives
-here. You may add R code as in the following.</p>
-<pre class="r"><code># Any R code here</code></pre>
-<p><strong>Any writing here</strong></p>
-<p>## Evidence 2</p>
-<p>Learning objective(s) assessed: <strong>Please add here
-e.g. L01</strong></p>
-<p>Please add new evidence and subsections as necessary.</p>
+
+tab &lt;- matrix(tab_dat, nrow=3, ncol=length(LAs), dimnames=list(c(&quot;SMETS1&quot;,&quot;SMETS2&quot;,&quot;NON SMART&quot;),LAs))
+
+print(tab)</code></pre>
+<pre><code>##           South Wales South West East Midlands West Midlands
+## SMETS1         252766     296476        748336        413451
+## SMETS2         437953     556289       1249099        659224
+## NON SMART      553615     710112       1358099        889501</code></pre>
+<p>Using this table we can test for the independence of the variables
+‘Licence Area’ and ‘Meter Type’.</p>
+<p><span class="math inline">\(H_0:\)</span> The meter type is
+independent of which licence area it resides in. <span class="math inline">\(vs.\)</span> <span class="math inline">\(H_1:\)</span> The meter type depends on which
+licence area the meter resides in.</p>
+<p>Under <span class="math inline">\(H_0\)</span> for large <span class="math inline">\(n\)</span> (which is applicable here as n =
+8,124,921),</p>
+<p><span class="math inline">\(-2\log(\Lambda)\sim \chi_{(J-1)(K-1)}^{2}
+\space approximately,\)</span></p>
+<p><span class="math inline">\(-2\log(\Lambda)=2\sum\limits_{j=1}^{J}\sum\limits_{k=1}^{K}y_{jk}\log\left(\frac{y_{jk}}{\hat{e}_{jk}}\right)\)</span></p>
+<p><span class="math inline">\(\hat{e}_{jk}=\frac{y_{j\bullet}y_{\bullet
+k}}{n}\)</span></p>
+<pre class="r"><code>results &lt;- GTest(tab,correct=&quot;none&quot;)
+
+print(results)</code></pre>
+<pre><code>## 
+##  Log likelihood ratio (G-test) test of independence without correction
+## 
+## data:  tab
+## G = 21012, X-squared df = 6, p-value &lt; 2.2e-16</code></pre>
+<p>The p-value for this test is 0 which is much less than 0.01. This
+suggests there is overwhelming evidence to reject the null hypothesis
+(<span class="math inline">\(H_0\)</span>) and we can say the variables
+are not independent. This suggests that different areas have different
+levels of uptake of smart meters compared to others.</p>
 </div>
 
 
