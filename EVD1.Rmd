@@ -19,7 +19,11 @@ library(MASS)
 # Keeps 'random' consistent
 set.seed(123)
 
-dat <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
+# Home dev
+dat <- read.csv('C:\\Users\\louis\\OneDrive\\Documents\\Education\\NGED\\University Work\\Year 2\\Y2-R-Portfolio\\Data\\all_sm_data.csv')
+
+# Work dev
+#dat <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
 ```
 
 ```{r filter-outliers}
@@ -60,6 +64,7 @@ conf_intervals <- confint(fit_norm, level=0.95)
 
 print(conf_intervals)
 ```
+
 ```{r import_per_device_mle_trunc_norm}
 dat$import_per_device <- dat$Total_consumption_active_import / dat$aggregated_device_count_Active
 
