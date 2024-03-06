@@ -4,10 +4,9 @@ output: html_document
 ---
   *Knit this R markdown file, read and understand the html file, then edit and knit the R markdown file to showcase your evidence. Save the html file for submission.*
   
-  ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
-
 
 ```{css, echo=FALSE}
 div.warning {
@@ -24,15 +23,49 @@ div.warning {
 }
 ```
 
-:::warning
-* **Please read the briefing sheet and guidance on Moodle carefully before completing the portfolio.**
+```{r load-data, include=FALSE, warning=FALSE}
+library(dplyr)
+library(MASS)
+library(tidyverse)
+library(DescTools)
+
+
+# Keeps 'random' consistent
+set.seed(123)
+
+# Imports data from CSVs
+
+# Home dev
+#dat1 <- read.csv('C:\\Users\\louis\\OneDrive\\Documents\\Education\\NGED\\University Work\\Year 2\\Y2-R-Portfolio\\Data\\all_sm_data.csv')
+#dat2 <- read.csv(INSERT-SM-VOLUME-PATH-HERE)
+
+# Work dev
+dat1 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
+dat2 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\sm-vols-jan24-dummy.csv')
+```
+
+```{r standard-functions, echo=FALSE}
+# These functions will help reduce repeated code
+
+# Removes all outliers (> 1.5x IQR) from a given column
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(column, 0.25)
+  Q3 <- quantile(column, 0.75)
+  IQR <- Q3 - Q1
   
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q1 + 1.5 * IQR
   
-  :::
+  filtered_df <- df[column >= lower_bound & column <= upper_bound,]
   
-  Please ensure that the evidence covers all of the following learning objectives:
+  return(filtered_df)
+}
+```
   
-  LO1: Can apply methods concerning estimation of parameters in standard statistical models; in particular the method of moments and the maximum likelihood method.
+
+Please ensure that the evidence covers all of the following learning objectives:
+  
+LO1: Can apply methods concerning estimation of parameters in standard statistical models; in particular the method of moments and the maximum likelihood method.
 
 LO2: Can perform statistical hypotheses tests using data from studies (such as t and F-tests, comparison of models and parameter values).
 
@@ -41,25 +74,129 @@ LO3: Can apply methods for interval estimation; in particular, exact and approxi
 LO4: Can apply methods for analysing categorical data.
 
 
-## Evidence 1
+## Evidence 1 - Distribution of customer energy consumption
 
-Learning objective(s) assessed: **Please add here e.g. L01**
+Learning objective(s) assessed: **LO1 | LO3**
   
-  Please show any evidence for one (or more) of the learning objectives here. You may add R code as in the following.
+Please show any evidence for one (or more) of the learning objectives here. You may add R code as in the following.
+
+```{r 1.1-visualising-the-distribution}
+# For each row, calculate the power consumed per device
+dat1$import_per_device <- dat1$Total_consumption_active_import / dat1$aggregated_device_count_Active
+
+# Filter the data set to remove erroneous data values
+filt <- remove_outliers(dat1, dat1$import_per_device)
+
+# Plot histogram of the values observed in power consumed per device
+hist(filt$import_per_device, 
+     breaks = seq(min(filt$import_per_device), max(filt$import_per_device), length.out = 30),
+     main = "Distribution of average energy consumption per device per half hour",
+     xlab = "Mean energy consumption (Wh)")
+```
+
+By dividing the total energy consumption by the number of active devices for each row we can find the the average (mean) energy consumption for each device for each half-hour interval. After removing outliers (greater than 1.5x the interquartile range) and plotting a histogram for the distribution of these values we can see a fairly normal graph.
+
+To find good estimates for the mean and standard deviation of this distribution we can use the maximum likelihood method:
+
+```{r 1.2-mle}
+# Fit normal distribution to the filtered data (find the maximum likelihood estimators for mean and standard deviation)
+fit_norm <- fitdistr(filt$import_per_device, densfun = "normal")
+print(fit_norm)
+```
+
+The maximum likelihood estimators for the mean ($\hat{\mu}$) and the standard deviation ($\hat{\sigma}$) are shown above with the standard error shown below them. A 95% confidence interval can be calculated for each estimator to help quantify the uncertainty of the estimations for the population parameters derived from the sample:
+
+```{r 1.3-confidence-intervals}
+# Finds the 95% confidence intervals for the MLEs of both the mean and standard deviation
+conf_intervals <- confint(fit_norm, level=0.95)
+print(conf_intervals)
+```
+
+By inserting these estimates into a random normal distribution generator we can compare the estimated shape of the population with the shape we observe in the sample.
+
+```{r 1.4-compare-with-random-normal}
+# Plot a random normal distribution using the MLEs to compare against actual distribution
+test_data <- rnorm(10000,mean=fit_norm$estimate['mean'],sd=fit_norm$estimate['sd'])
+hist(test_data, breaks = 30,
+     main = "Distribution of random normal (mean=223.6, sd=92.2)",
+     xlab = "Generated X value")
+```
+
+  
+## Evidence 2 - Smart meter uptake in different regions
+  
+Learning objective(s) assessed: **L02 | LO4**
+  
+Please add new evidence and subsections as necessary.
+
+```{r 2.1-contingency-table}
+# Grabs the names of all 4 different licence areas
+LAs = unique(dat2$Licence_Area)
+
+# Loops through each row in the data set and finds the number of smart and non-smart meters for each region
+tab_dat = c()
+for (LA in LAs) {
+  filtered <- dat2[dat2$Licence_Area == LA,]
+  
+  S1 = sum(filtered$SMETS1)
+  S2 = sum(filtered$SMETS2)
+  nonS = sum(filtered$NON_SMART)
+  
+  row_dat = c(S1, S2, nonS)
+  
+  tab_dat = append(tab_dat, row_dat)
+}
+
+# This data is then stored in a 3x4 matrix (contingency table)
+tab <- matrix(tab_dat, nrow=3, ncol=length(LAs), dimnames=list(c("SMETS1","SMETS2","NON SMART"),LAs))
+
+print(tab)
+```
+
+Using this table we can test for the independence of the variables 'Licence Area' and 'Meter Type'.
+
+$H_0:$ The meter type is independent of which licence area it resides in.
+$vs.$
+$H_1:$ The meter type depends on which licence area the meter resides in.
+
+Under $H_0$ for large $n$ (which is applicable here as n = 8,124,921), 
+
+$-2\log(\Lambda)\sim \chi_{(J-1)(K-1)}^{2} \space approximately,$
+
+$-2\log(\Lambda)=2\sum\limits_{j=1}^{J}\sum\limits_{k=1}^{K}y_{jk}\log\left(\frac{y_{jk}}{\hat{e}_{jk}}\right)$
+
+$\hat{e}_{jk}=\frac{y_{j\bullet}y_{\bullet k}}{n}$
+
+```{r 2.2-G-Test}
+# Uses a G-Test (with no correction) to test the independence of the licence area and the type of meter used by customers
+results <- GTest(tab,correct="none")
+
+print(results)
+```
+The p-value for this test is <2.2e-16 which is much less than 0.01. This suggests there is overwhelming evidence to reject the null hypothesis ($H_0$) and we can say the variables are not independent. This suggests that different areas have different levels of uptake of smart meters compared to others. 
+
+## Evidence 3
+  
+Learning objective(s) assessed: **???**
+  
+Please add new evidence and subsections as necessary.
 
 ```{r}
 # Any R code here
 ```
 
 **Any writing here**
-  
-  
-  
-  ## Evidence 2
-  
-  Learning objective(s) assessed: **Please add here e.g. L01**
-  
-  Please add new evidence and subsections as necessary.
 
 
 
+## Evidence 4
+  
+Learning objective(s) assessed: **???**
+  
+Please add new evidence and subsections as necessary.
+
+```{r}
+# Any R code here
+```
+
+**Any writing here**

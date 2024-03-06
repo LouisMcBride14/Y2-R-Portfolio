@@ -37,6 +37,8 @@ remove_outliers <- function(df, column) {
   
   filtered_df <- df[column >= lower_bound & column <= upper_bound,]
   
+  # Add line to de-allocate df from memory??
+  
   return(filtered_df)
 }
 ```
