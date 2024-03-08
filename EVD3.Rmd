@@ -1,0 +1,126 @@
+---
+title: "EVD1"
+author: "Louis"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Set-up
+
+```{r data-import, echo=FALSE}
+library(dplyr)
+
+
+# Keeps 'random' consistent
+set.seed(123)
+
+# Loads SM Volume data
+dat1 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
+dat3 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\distribution-substations-january-2024.csv')
+```
+
+```{r filter-outliers}
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(column, 0.25)
+  Q3 <- quantile(column, 0.75)
+  IQR <- Q3 - Q1
+  
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q1 + 1.5 * IQR
+  
+  filtered_df <- df[column >= lower_bound & column <= upper_bound,]
+  
+  return(filtered_df)
+}
+```
+
+## Aggregate by distribution substation
+
+```{r aggregate-by-dist-sub}
+# Removes February data
+dat1 <- dat1[dat1$data_collection_log_timestamp < "2024-02-01",]  # BE CAREFUL AS dat1 HAS BEEN REPLACED
+
+# Set up new data frame where each row is a unique device
+agg_dat <- data.frame(
+  'dist_sub_num' = unique(dat1$secondary_substation_id))
+
+# Add matching sub names and device counts
+sub_names <- dat1 %>%
+  group_by(secondary_substation_id) %>%
+  summarise(secondary_substation_name = first(secondary_substation_name),
+            aggregated_device_count_Active = max(aggregated_device_count_Active)) %>%
+  rename(dist_sub_num = secondary_substation_id)
+
+agg_dat <- left_join(agg_dat, sub_names, by = "dist_sub_num")
+
+# Add mean of total consumption for each sub
+mean_consumption <- dat1 %>%
+  group_by(secondary_substation_id) %>%
+  summarise(mean_total_consumption = mean(Total_consumption_active_import, na.rm = TRUE)) %>%
+  rename(dist_sub_num = secondary_substation_id)
+
+agg_dat <- left_join(agg_dat, mean_consumption, by = "dist_sub_num")
+
+# Add sum of total consumption for each sub
+sum_consumption <- dat1 %>%
+  group_by(secondary_substation_id) %>%
+  summarise(sum_total_consumption = sum(Total_consumption_active_import, na.rm = TRUE)) %>%
+  rename(dist_sub_num = secondary_substation_id)
+
+agg_dat <- left_join(agg_dat, sum_consumption, by = "dist_sub_num")
+```
+
+
+## Join to dat3
+
+```{r join-to-dat3}
+joined_dat <- inner_join(agg_dat, dat3, by = join_by("dist_sub_num" == "Substation.Number"))
+
+print(joined_dat)
+```
+
+## HISTOGRAMMMMMM
+
+```{r hist}
+hist(joined_dat$Customers)
+
+t <- remove_outliers(joined_dat, joined_dat$Customers)
+
+hist(t$Customers, breaks= 15)
+```
+
+```{r hist2}
+joined_dat$sm_penetration <- joined_dat$aggregated_device_count_Active / joined_dat$Customers
+  
+hist(joined_dat$sm_penetration)
+
+t <- remove_outliers(joined_dat, joined_dat$sm_penetration)
+
+hist(t$sm_penetration)
+```
+
+## Exponential
+
+For this work use the time between peaks in consumption (per day) for all subs
+
+Ex.
+
+Sub Num | Day | Time since last peak
+------------------------------------
+ 00001  |  2  |        23.5
+ 00002  |  3  |        23.2
+ .
+ .
+ .
+
+```{r expo}
+# The exponential distribution is a continuous probability distribution that models the time between events in a Poisson point process.
+#It is used to model the time a person needs to wait before the given event happens.
+#The events are independent and occur at a steady average rate. It is a way to model the time between events that happen randomly and continuously
+
+
+```
