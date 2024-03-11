@@ -122,5 +122,69 @@ Sub Num | Day | Time since last peak
 #It is used to model the time a person needs to wait before the given event happens.
 #The events are independent and occur at a steady average rate. It is a way to model the time between events that happen randomly and continuously
 
+# Removes February data
+dat1 <- dat1[dat1$data_collection_log_timestamp < "2024-02-01",]  # BE CAREFUL AS dat1 HAS BEEN REPLACED
+
+dat1$data_colletion_log_timestamp <- as.POSIXct(dat1$data_collection_log_timestamp)
+
+dat1$date <- dat1$data_collection_log_timestamp.date()
+
+abc <- dat1 %>%
+  group_by(secondary_substation_id)
+
+```
+
+```{r rahhhh}
+library(dplyr)
+library(tidyr)
+
+# Extracting date and time directly from the timestamp column
+dat1 <- dat1 %>%
+  mutate(timestamp = as.POSIXct(data_collection_log_timestamp, format = "%Y-%m-%d %H:%M:%S+00:00"),
+         date = as.Date(timestamp),
+         time = format(timestamp, "%H:%M:%S"))
+```
+
+```{r rahhhh2}
+# Grouping by secondary_substation_id, date, and time, then finding max consumption
+result <- dat1 %>%
+  group_by(secondary_substation_id, date, time) %>%
+  summarise(max_consumption = max(Total_consumption_active_import)) %>%
+  group_by(secondary_substation_id, date) %>%
+  slice(which.max(max_consumption))  # Selecting the row with the max consumption for each date
+
+# Viewing the result
+print(result)
+
+```
+
+```{r rahhhh3}
+library(dplyr)
+
+# Calculate time differences between consecutive maximum consumption timestamps
+result <- result %>%
+  arrange(secondary_substation_id, date) %>%
+  group_by(secondary_substation_id) %>%
+  mutate(time_diff = difftime(lead(as.POSIXct(paste(date, time)), default = last(as.POSIXct(paste(date, time)))), as.POSIXct(paste(date, time)), units = "mins")) %>%
+  filter(!is.na(time_diff))
+
+# Calculate mean time difference for each substation
+mean_time_diff <- result %>%
+  group_by(secondary_substation_id) %>%
+  summarise(mean_time_between_max_consumption = mean(time_diff))
+
+# Viewing the mean time difference for each substation
+print(mean_time_diff)
+```
+
+```{r rahhhh4}
+mean_time_diff$mean_time_between_max_consumption <- as.numeric(mean_time_diff$mean_time_between_max_consumption)
+
+hist(mean_time_diff$mean_time_between_max_consumption)
+
+test_dat <- remove_outliers(mean_time_diff, mean_time_diff$mean_time_between_max_consumption)
+
+
+hist(test_dat$mean_time_between_max_consumption, breaks=15)
 
 ```

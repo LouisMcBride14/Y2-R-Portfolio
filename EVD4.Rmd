@@ -1,0 +1,95 @@
+---
+title: "EVD1"
+author: "Louis"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Set-up
+
+```{r data-import, echo=FALSE}
+library(dplyr)
+library(MASS)
+
+# Keeps 'random' consistent
+set.seed(123)
+
+# Loads historic fault data
+dat4 <- read.csv("Data\\historic-fault-data.csv")
+
+```
+
+```{r filter-outliers}
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(column, 0.25)
+  Q3 <- quantile(column, 0.75)
+  IQR <- Q3 - Q1
+  
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q1 + 1.5 * IQR
+  
+  filtered_df <- df[column >= lower_bound & column <= upper_bound,]
+  
+  return(filtered_df)
+}
+```
+
+## Aggregate by fault/incident
+
+```{r agg-by-fault}
+agged <- dat4 %>%
+  group_by(incident_ref) %>%
+  summarise(licence_area = first(licence_area), # Should all be the same anyway
+            interruption_date = min(interruption_date), # Gets earliest interruption date (will be from stage 1)
+            restoration_date = max(restoration_date), # Gets latest restoration date (will be from last stage)
+            voltage = first(voltage), # Should all be the same anyway
+            report_ci = max(report_ci)) # Gets the largest value (the max number of customers off simultaneously)
+```
+
+## Finds the times between each fault
+```{r fault-intervals}
+# Convert datetime column to POSIXct
+agged$interruption_date <- as.POSIXct(agged$interruption_date, format = "%d/%m/%Y %H:%M:%S")
+
+# Order data by datetime column
+agged <- agged[order(agged$interruption_date), ]
+
+agged$fault_interval <- NA  # Initialize the new column with NA
+
+for (i in 2:nrow(agged)) {
+  # Calculate time difference in minutes between current row and previous row
+  interval <- difftime(agged$interruption_date[i], agged$interruption_date[i - 1], units = "secs")
+  
+  # Assign the calculated interval to the corresponding row in the new column
+  agged$fault_interval[i] <- as.numeric(interval)
+}
+
+print(agged)
+```
+
+```{r histttt}
+hist(agged$fault_interval, breaks = 100)
+
+ahh <- na.omit(agged)
+
+abc <- remove_outliers(ahh, ahh$fault_interval)
+
+hist(abc$fault_interval, breaks=20)
+```
+
+```{r mle-exp}
+results <- fitdistr(abc$fault_interval, densfun="exponential")
+
+print(results)
+
+print(mean(abc$fault_interval))
+
+test_dat <- rexp(10000, rate=results$estimate)
+
+hist(test_dat, xlim = c(0, 1000), breaks = 50)
+```
+

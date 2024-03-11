@@ -42,6 +42,8 @@ set.seed(123)
 # Work dev
 dat1 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
 dat2 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\sm-vols-jan24-dummy.csv')
+
+dat4 <- read.csv("Data\\historic-fault-data.csv")
 ```
 
 ```{r standard-functions, echo=FALSE}
@@ -77,8 +79,6 @@ LO4: Can apply methods for analysing categorical data.
 ## Evidence 1 - Distribution of customer energy consumption
 
 Learning objective(s) assessed: **LO1 | LO3**
-  
-Please show any evidence for one (or more) of the learning objectives here. You may add R code as in the following.
 
 ```{r 1.1-visualising-the-distribution}
 # For each row, calculate the power consumed per device
@@ -126,8 +126,6 @@ hist(test_data, breaks = 30,
 ## Evidence 2 - Smart meter uptake in different regions
   
 Learning objective(s) assessed: **L02 | LO4**
-  
-Please add new evidence and subsections as necessary.
 
 ```{r 2.1-contingency-table}
 # Grabs the names of all 4 different licence areas
@@ -189,14 +187,70 @@ Please add new evidence and subsections as necessary.
 
 
 
-## Evidence 4
+## Evidence 4 - Time until next fault
   
-Learning objective(s) assessed: **???**
-  
-Please add new evidence and subsections as necessary.
+Learning objective(s) assessed: **LO1**
 
-```{r}
-# Any R code here
+Another important area of the business is fault prediction. 
+
+```{r 4.1-aggregation}
+# Aggregate by fault
+faults <- dat4 %>%
+  group_by(incident_ref) %>%
+  summarise(licence_area = first(licence_area), # Should all be the same anyway
+            interruption_date = min(interruption_date), # Gets earliest interruption date (will be from stage 1)
+            restoration_date = max(restoration_date), # Gets latest restoration date (will be from last stage)
+            voltage = first(voltage), # Should all be the same anyway
+            report_ci = max(report_ci)) # Gets the largest value (the max number of customers off simultaneously)
 ```
 
+```{r 4.2-intervals}
+# Convert datetime column to POSIXct
+faults$interruption_date <- as.POSIXct(faults$interruption_date, format = "%d/%m/%Y %H:%M:%S")
+
+# Order data by datetime column
+faults <- faults[order(faults$interruption_date), ]
+
+faults$fault_interval <- NA  # Initialize the new column with NA
+
+for (i in 2:nrow(faults)) {
+  # Calculate time difference in minutes between current row and previous row
+  interval <- difftime(faults$interruption_date[i], faults$interruption_date[i - 1], units = "secs")
+  
+  # Assign the calculated interval to the corresponding row in the new column
+  faults$fault_interval[i] <- as.numeric(interval)
+}
+```
+
+```{r 4.3-histogram}
+# Remove the initial row (where interval = NA)
+faults <- na.omit(faults)
+
+# Remove any outliers from the fault interval column
+faults <- remove_outliers(faults, faults$fault_interval)
+
+# Plot distribution of time until
+hist(faults$fault_interval, breaks=20)
+```
+
+```{r 4.4-mle-exp}
+fit_exp <- fitdistr(faults$fault_interval, densfun="exponential")
+
+print(fit_exp)
+```
+
+```{r 4.5-compare-rand-exp}
+test_dat <- rexp(10000, rate=fit_exp$estimate)
+
+hist(test_dat, xlim = c(0, 1000), breaks = 50)
+```
+
+```{r 4.6-mom-exp}
+sample_mean <- mean(faults$fault_interval)
+
+lambda_estimate <- 1/sample_mean
+
+print(sample_mean)
+print(lambda_estimate)
+```
 **Any writing here**
