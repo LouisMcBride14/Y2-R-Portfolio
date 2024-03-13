@@ -1,6 +1,8 @@
 ---
 title: "R Portfolio"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
   *Knit this R markdown file, read and understand the html file, then edit and knit the R markdown file to showcase your evidence. Save the html file for submission.*
   
@@ -118,7 +120,7 @@ By inserting these estimates into a random normal distribution generator we can 
 # Plot a random normal distribution using the MLEs to compare against actual distribution
 test_data <- rnorm(10000,mean=fit_norm$estimate['mean'],sd=fit_norm$estimate['sd'])
 hist(test_data, breaks = 30,
-     main = "Distribution of random normal (mean=223.6, sd=92.2)",
+     main = "Distribution of random normal (μ = 223.6, σ = 92.2)",
      xlab = "Generated X value")
 ```
 
@@ -204,6 +206,8 @@ faults <- dat4 %>%
             report_ci = max(report_ci)) # Gets the largest value (the max number of customers off simultaneously)
 ```
 
+By using historic fault records, we can calculate the time intervals (in seconds) between faults occurring on our network. Here we could split the data into seperate parts for each licence area or GSP/BSP but to keep things simple we will use the whole network.
+
 ```{r 4.2-intervals}
 # Convert datetime column to POSIXct
 faults$interruption_date <- as.POSIXct(faults$interruption_date, format = "%d/%m/%Y %H:%M:%S")
@@ -230,8 +234,10 @@ faults <- na.omit(faults)
 faults <- remove_outliers(faults, faults$fault_interval)
 
 # Plot distribution of time until
-hist(faults$fault_interval, breaks=20)
+hist(faults$fault_interval, breaks=20, main="Distribution of time until next fault", xlab="Time until next fault (secs)")
 ```
+
+Plotting the distribution of intervals on a histogram we can see a clear exponential decay. With this knowledge, we can now try to fit our data to an exponential distribution to find an estimate for the rate ($\lambda$) parameter.
 
 ```{r 4.4-mle-exp}
 fit_exp <- fitdistr(faults$fault_interval, densfun="exponential")
@@ -239,18 +245,37 @@ fit_exp <- fitdistr(faults$fault_interval, densfun="exponential")
 print(fit_exp)
 ```
 
+Once we have our estimate we can check it against a randomly generated exponential distribution with the same rate.
+
 ```{r 4.5-compare-rand-exp}
 test_dat <- rexp(10000, rate=fit_exp$estimate)
 
-hist(test_dat, xlim = c(0, 1000), breaks = 50)
+hist(test_dat, xlim = c(0, 1000), breaks = 50, main = "Distribution of random Exponential (lambda = 0.002978)", xlab = "Generated X value")
 ```
 
+The shape of the distribution is very similar which indicates the value found is a good estimation for $\lambda$. An alternative method for parameter estimation is the 'Method of Moments'. This method simply equates theoretical and sample moments - choosing to ensure the distribution ‘matches’ the data in the sense of equating the moments. For a single parameter this means solving:
+$E(X) = \bar{X}$
+
+The expected value of X where X ~ $Exp(\lambda)$ is defined as:
+$E(X) = \frac{1}{\lambda}$
+
+We can find $\bar{X}$ (sample mean) by summing the time intervals and then dividing the result by the number of intervals in our data set.
+
 ```{r 4.6-mom-exp}
+sum <- sum(faults$fault_interval)
+count <- length(faults$fault_interval)
+
 sample_mean <- mean(faults$fault_interval)
 
 lambda_estimate <- 1/sample_mean
-
-print(sample_mean)
-print(lambda_estimate)
 ```
-**Any writing here**
+
+$\bar{X}$ = `r sum` / `r count` = `r sample_mean`
+
+Using the equations above we can say
+
+`r sample mean` = $\frac{1}{\lambda}$
+
+$\therefore \space \hat\lambda$ = 1 / `r sample_mean` = `r lambda_estimate`
+
+This estimate is coincidentally the same as the estimate derived using the maximum likelihood estimator methods above.
