@@ -127,7 +127,7 @@ hist(test_data, breaks = 30,
   
 ## Evidence 2 - Smart meter uptake in different regions
   
-Learning objective(s) assessed: **L02 | LO4**
+Learning objective(s) assessed: **LO 2 | LO4**
 
 ```{r 2.1-contingency-table}
 # Grabs the names of all 4 different licence areas

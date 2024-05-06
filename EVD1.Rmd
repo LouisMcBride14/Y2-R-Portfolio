@@ -20,10 +20,10 @@ library(MASS)
 set.seed(123)
 
 # Home dev
-dat <- read.csv('C:\\Users\\louis\\OneDrive\\Documents\\Education\\NGED\\University Work\\Year 2\\Y2-R-Portfolio\\Data\\all_sm_data.csv')
+#dat <- read.csv('C:\\Users\\louis\\OneDrive\\Documents\\Education\\NGED\\University Work\\Year 2\\Y2-R-Portfolio\\Data\\all_sm_data.csv')
 
 # Work dev
-#dat <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
+dat <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
 ```
 
 ```{r filter-outliers}

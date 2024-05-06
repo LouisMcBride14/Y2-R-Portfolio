@@ -1,0 +1,86 @@
+---
+title: "lv_gamma_dist"
+author: "Louis"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data-load, include=FALSE}
+library(dplyr)
+library(MASS)
+
+
+dat_lv <- read.csv("C:\\Users\\Admin\\Documents\\University Work\\Y2\\Satistics and Probability Models Assessments\\R Portfolio\\Y2-R-Portfolio\\Data\\LV_load_monitor_721030.csv")
+
+# Filter to only voltage values 
+dat_lv <- dat_lv[dat_lv$Units == 'V',]
+```
+
+LO1: Gamma MLE
+LO3: Approx. confidence interval estimations
+
+```{r gamma-dist}
+hist(dat_lv$Value, breaks=30)
+
+# Fit normal distribution to the subset data
+fit_gamma <- fitdistr(dat_lv$Value, densfun = "gamma")
+print(fit_gamma)
+
+test_data <- rgamma(10000,shape=fit_gamma$estimate['shape'],rate=fit_gamma$estimate['rate'])
+hist(test_data, breaks = 30)
+```
+
+$\hat{\theta}\sim N(\theta, I(\theta)^{-1}).$
+
+```{r approx-conf-intervals}
+# Calculates the fisher information for shape using trigamma function
+shape_trigam <- trigamma(fit_gamma$estimate['shape'])
+
+print(shape_trigam)
+
+variance_shape <- 1/shape_trigam
+
+z_score <- 1.96  # Approximate standardised value for 95% conf int
+
+lwrb <- fit_gamma$estimate['shape'] - z_score * sqrt(variance_shape)
+uprb <- fit_gamma$estimate['shape'] + z_score * sqrt(variance_shape)
+
+shape_conf_int <- c(lwrb, uprb)
+
+print(shape_conf_int)
+
+print('-----------------------------------------')
+
+print(confint(fit_gamma, level = 0.95))
+
+print('-----------------------------------------')
+
+rate_fisher <- fit_gamma$estimate['shape'] / (fit_gamma$estimate['rate']^2)
+
+variance_rate <- 1/rate_fisher
+
+lwrb2 <- fit_gamma$estimate['rate'] - z_score * sqrt(variance_rate)
+uprb2 <- fit_gamma$estimate['rate'] + z_score * sqrt(variance_rate)
+
+shape_conf_int <- c(lwrb2, uprb2)
+
+print(shape_conf_int)
+```
+```{r t-test}
+jan_dat <- dat_lv[dat_lv$Timestamp < "2023-02-01",]
+
+march_dat <- dat_lv[dat_lv$Timestamp > "2023-02-28",]
+
+t_res <- t.test(jan_dat$Value, march_dat$Value, alternative="two.sided")
+
+print(t_res)
+```
+```{r f-test}
+f_res <- var.test(jan_dat$Value, march_dat$Value, alternative="two.sided")
+
+print(f_res)
+```

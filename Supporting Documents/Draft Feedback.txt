@@ -1,9 +1,9 @@
-LO1: Good so far, just repeat mle for different dist (exp, gamma??)
+LO1: Good so far, just repeat mle for different dist (exp, gamma??) [CHECK]
 
-LO2: Nothing yet, use t / F-tests and compare models in evidence 3
+LO2: Nothing yet, use t / F-tests and compare models in evidence 3 [CHECK-ish (EVD2)]
 
-LO3: Decent so far, but use approximate confidence intervals based on asymptotic theory from Y2 (Chapter 19.1) 
+LO3: Decent so far, but use approximate confidence intervals based on asymptotic theory from Y2 (Chapter 19.1) [CHECK]
 
-LO4: Good so far, maybe do another in another evidence piece??
+LO4: Good so far, maybe do another in another evidence piece?? [EVD4??]
 
 Overall: Make it easier to explain to stakeholder in the viva (less maths??)
