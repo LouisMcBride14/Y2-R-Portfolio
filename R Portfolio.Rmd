@@ -1,7 +1,6 @@
 ---
 title: "R Portfolio"
 output:
-  pdf_document: default
   html_document: default
 ---
   *Knit this R markdown file, read and understand the html file, then edit and knit the R markdown file to showcase your evidence. Save the html file for submission.*
@@ -44,7 +43,7 @@ set.seed(123)
 # Work dev
 dat1 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\all_sm_data.csv')
 dat2 <- read.csv('C:\\Users\\Admin\\Documents\\NGED Work\\CDP Smart Meter Data\\Data\\sm-vols-jan24-dummy.csv')
-
+dat3 <- read.csv('C:\\Users\\Admin\\Documents\\University Work\\Y2\\Satistics and Probability Models Assessments\\R Portfolio\\Y2-R-Portfolio\\Data\\LV_load_monitor_721030.csv')
 dat4 <- read.csv("Data\\historic-fault-data.csv")
 ```
 
@@ -120,14 +119,14 @@ By inserting these estimates into a random normal distribution generator we can 
 # Plot a random normal distribution using the MLEs to compare against actual distribution
 test_data <- rnorm(10000,mean=fit_norm$estimate['mean'],sd=fit_norm$estimate['sd'])
 hist(test_data, breaks = 30,
-     main = "Distribution of random normal (μ = 223.6, σ = 92.2)",
+     main = "Distribution of random normal (mean = 223.6, s.d. = 92.2)",
      xlab = "Generated X value")
 ```
 
   
 ## Evidence 2 - Smart meter uptake in different regions
   
-Learning objective(s) assessed: **LO 2 | LO4**
+Learning objective(s) assessed: **LO2 | LO4**
 
 ```{r 2.1-contingency-table}
 # Grabs the names of all 4 different licence areas
@@ -156,7 +155,9 @@ print(tab)
 Using this table we can test for the independence of the variables 'Licence Area' and 'Meter Type'.
 
 $H_0:$ The meter type is independent of which licence area it resides in.
+
 $vs.$
+
 $H_1:$ The meter type depends on which licence area the meter resides in.
 
 Under $H_0$ for large $n$ (which is applicable here as n = 8,124,921), 
@@ -175,19 +176,113 @@ print(results)
 ```
 The p-value for this test is <2.2e-16 which is much less than 0.01. This suggests there is overwhelming evidence to reject the null hypothesis ($H_0$) and we can say the variables are not independent. This suggests that different areas have different levels of uptake of smart meters compared to others. 
 
-## Evidence 3
+## Evidence 3 - Monitoring Low Voltage
   
-Learning objective(s) assessed: **???**
-  
-Please add new evidence and subsections as necessary.
+Learning objective(s) assessed: **LO1 | LO2 | LO3**
 
-```{r}
-# Any R code here
+```{r 3.1-visualising-the-distribution}
+# Filter to only voltage values 
+dat_lv <- dat3[dat3$Units == 'V',]
+
+# Plot initial histogram
+hist(dat_lv$Value, breaks=30, main="Distribution of low voltage readings",
+     xlab="Voltage")
 ```
 
-**Any writing here**
+Plotting the distribution of the 10-minute low voltage readings we find a shape that looks
+a lot like a gamma distribution.
 
+Using the same maximum likelihood estimation method as before, we are able to find good estimates for the two parameters of a gamma distribution (shape and rate):
 
+```{r 3.2-mle}
+# Fit gamma distribution to the subset data
+fit_gamma <- fitdistr(dat_lv$Value, densfun = "gamma")
+print(fit_gamma)
+
+# Gets number of rows in dataset
+n_rows <- length(dat_lv$Value)
+```
+As our dataset has a large number of observations (`r n_rows`) we are able to approximate
+the confidence intervals for the maximum likelihood estimators of both the shape and rate
+using the formula:
+
+$\hat\theta$ ~ $N(\theta,I(\theta)^{-1})$
+
+The Fisher / Expected information ($I(\theta)$) of the shape parameter, $k$, is equal to
+$\psi_{1}(k)$ (the trigamma function).
+
+The Fisher information of the rate parameter, ($\lambda$), is equal to $\frac{k}{\lambda^2}$.
+
+Using these formulas we can find a 95% confidence intervals for the MLEs we calculated earlier:
+
+```{r 3.3-approximate-confidence-intervals}
+# Calculates the fisher information for shape using trigamma function
+shape_trigam <- trigamma(fit_gamma$estimate['shape'])
+
+shape_var <- 1/shape_trigam
+
+z_score <- 1.96  # Approximate standardised value for 95% conf int
+
+lwrb <- fit_gamma$estimate['shape'] - z_score * sqrt(shape_var)
+uprb <- fit_gamma$estimate['shape'] + z_score * sqrt(shape_var)
+
+shape_conf_int <- c(lwrb, uprb)
+
+print(c('2.5%', '97.5%'))
+
+print(shape_conf_int)
+
+rate_fisher <- fit_gamma$estimate['shape'] / (fit_gamma$estimate['rate']^2)
+
+rate_var <- 1/rate_fisher
+
+lwrb2 <- fit_gamma$estimate['rate'] - z_score * sqrt(rate_var)
+uprb2 <- fit_gamma$estimate['rate'] + z_score * sqrt(rate_var)
+
+shape_conf_int <- c(lwrb2, uprb2)
+
+print(shape_conf_int)
+
+voltage_mean <- mean(dat_lv$Value)
+```
+
+As this is an approximation, the confidence interval is not completely accurate but this
+method is often times easier than calculating the exact confidence interval.
+
+From our histogram, it seems our voltage mean is too high (at `r round(voltage_mean, 2)`V) for the expected 230V UK standard. By using a one sample t-test we can check if this difference is significant.
+
+$H_0:$ The mean of the voltage readings is not significantly greater than the 230V UK standard.
+
+$vs.$
+
+$H_1:$ The mean of the voltage readings is significantly greater than the 230V UK standard.
+
+```{r 3.4-t-test}
+# Perform t-test to check true mean
+t_result <- t.test(dat_lv$Value, mu=230, alternative="greater")
+print(t_result)
+```
+
+As our p-value is very small we can reject the null hypothesis and conclude that the sample data suggests a mean voltage value greater than 230V. Although not ideal, LV can range from 216V to 253V so our readings are still within the range of safe operation.
+
+It would also be useful to know if the voltage remains constant over time. Grouping the January and March readings separately, we can use some an F-test to check if the variance changes.
+
+$H_0:$ The variance in the voltage readings is the same in January and March.
+
+$vs.$
+
+$H_1:$ The variance in the voltage readings is different in January and March.
+
+```{r 3.5-f-test}
+jan_dat <- dat_lv[dat_lv$Timestamp < "2023-02-01",] # Anything before Feb (Jan)
+march_dat <- dat_lv[dat_lv$Timestamp > "2023-02-29",] # Anything after Feb (March)
+
+# Perform F-test to check change in variance
+f_result <- var.test(jan_dat$Value, march_dat$Value, alternative="two.sided")
+print(f_result)
+```
+
+Similarly to the t-test, we observe a very low p-value suggesting we reject the null hypothesis in favour of the alternative. We can say that the variance between the January values differ significantly from the variance between the March values.
 
 ## Evidence 4 - Time until next fault
   
@@ -274,7 +369,7 @@ $\bar{X}$ = `r sum` / `r count` = `r sample_mean`
 
 Using the equations above we can say
 
-`r sample mean` = $\frac{1}{\lambda}$
+`r sample_mean` = $\frac{1}{\lambda}$
 
 $\therefore \space \hat\lambda$ = 1 / `r sample_mean` = `r lambda_estimate`
 

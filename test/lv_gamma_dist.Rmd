@@ -75,12 +75,11 @@ jan_dat <- dat_lv[dat_lv$Timestamp < "2023-02-01",]
 
 march_dat <- dat_lv[dat_lv$Timestamp > "2023-02-28",]
 
-t_res <- t.test(jan_dat$Value, march_dat$Value, alternative="two.sided")
+t_res <- t.test(dat_lv$Value, mu=253, alternative="greater")
 
 print(t_res)
 ```
 ```{r f-test}
 f_res <- var.test(jan_dat$Value, march_dat$Value, alternative="two.sided")
-
 print(f_res)
 ```
