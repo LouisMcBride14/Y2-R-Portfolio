@@ -83,3 +83,9 @@ print(t_res)
 f_res <- var.test(jan_dat$Value, march_dat$Value, alternative="two.sided")
 print(f_res)
 ```
+
+```{r ad-test}
+results <- ad.test(dat_lv$Value, null = "pgamma", shape = fit_gamma$estimate['shape'], rate = fit_gamma$estimate['rate'])
+
+print(results)
+```

@@ -3,8 +3,7 @@ title: "R Portfolio"
 output:
   html_document: default
 ---
-  *Knit this R markdown file, read and understand the html file, then edit and knit the R markdown file to showcase your evidence. Save the html file for submission.*
-  
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
@@ -154,11 +153,11 @@ print(tab)
 
 Using this table we can test for the independence of the variables 'Licence Area' and 'Meter Type'.
 
-$H_0:$ The meter type is independent of which licence area it resides in.
+$H_0:$ The meter type is independent of the licence area in which it resides.
 
 $vs.$
 
-$H_1:$ The meter type depends on which licence area the meter resides in.
+$H_1:$ The meter type depends on the licence area in which the meter resides.
 
 Under $H_0$ for large $n$ (which is applicable here as n = 8,124,921), 
 
@@ -202,7 +201,7 @@ print(fit_gamma)
 # Gets number of rows in dataset
 n_rows <- length(dat_lv$Value)
 ```
-As our dataset has a large number of observations (`r n_rows`) we are able to approximate
+As our dataset has a large number of observations (`r n_rows`), we are able to approximate
 the confidence intervals for the maximum likelihood estimators of both the shape and rate
 using the formula:
 
@@ -223,27 +222,25 @@ shape_var <- 1/shape_trigam
 
 z_score <- 1.96  # Approximate standardised value for 95% conf int
 
-lwrb <- fit_gamma$estimate['shape'] - z_score * sqrt(shape_var)
-uprb <- fit_gamma$estimate['shape'] + z_score * sqrt(shape_var)
-
-shape_conf_int <- c(lwrb, uprb)
-
-print(c('2.5%', '97.5%'))
-
-print(shape_conf_int)
+shape_lwrb <- fit_gamma$estimate['shape'] - z_score * sqrt(shape_var)
+shape_uprb <- fit_gamma$estimate['shape'] + z_score * sqrt(shape_var)
 
 rate_fisher <- fit_gamma$estimate['shape'] / (fit_gamma$estimate['rate']^2)
 
 rate_var <- 1/rate_fisher
 
-lwrb2 <- fit_gamma$estimate['rate'] - z_score * sqrt(rate_var)
-uprb2 <- fit_gamma$estimate['rate'] + z_score * sqrt(rate_var)
-
-shape_conf_int <- c(lwrb2, uprb2)
-
-print(shape_conf_int)
+rate_lwrb <- fit_gamma$estimate['rate'] - z_score * sqrt(rate_var)
+rate_uprb <- fit_gamma$estimate['rate'] + z_score * sqrt(rate_var)
 
 voltage_mean <- mean(dat_lv$Value)
+
+ci_table <- data.frame(
+  Confidence_Intervals = c("2.5%", "97.5%"),
+  Shape = c(shape_lwrb, shape_uprb),
+  Rate = c(rate_lwrb, rate_uprb)
+)
+
+print(ci_table)
 ```
 
 As this is an approximation, the confidence interval is not completely accurate but this
@@ -329,7 +326,7 @@ faults <- na.omit(faults)
 faults <- remove_outliers(faults, faults$fault_interval)
 
 # Plot distribution of time until
-hist(faults$fault_interval, breaks=20, main="Distribution of time until next fault", xlab="Time until next fault (secs)")
+hist(faults$fault_interval, breaks=20, main="Distribution of time until next fault", xlab="Seconds until next fault")
 ```
 
 Plotting the distribution of intervals on a histogram we can see a clear exponential decay. With this knowledge, we can now try to fit our data to an exponential distribution to find an estimate for the rate ($\lambda$) parameter.

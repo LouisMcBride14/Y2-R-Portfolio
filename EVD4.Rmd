@@ -92,4 +92,3 @@ test_dat <- rexp(10000, rate=results$estimate)
 
 hist(test_dat, xlim = c(0, 1000), breaks = 50)
 ```
-

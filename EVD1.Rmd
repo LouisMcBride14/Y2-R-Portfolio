@@ -81,8 +81,8 @@ print(fit_norm)
 library(truncnorm)
 
 # Generate random data from a truncated normal distribution with lower bound 0
-test_data <- rtruncnorm(10000, a = 0, b = 500, mean = fit_norm$estimate[1], sd = fit_norm$estimate[2])
-hist(test_data, breaks = 30)
+test_data_norm <- rtruncnorm(10000, a = 0, b = 500, mean = fit_norm$estimate[1], sd = fit_norm$estimate[2])
+hist(test_data_norm, breaks = 30)
 ```
 
 
@@ -103,6 +103,23 @@ print(fit_gam)
 ```
 
 ```{r yuuhhh}
-test_data <- rgamma(10000,shape=fit_gam$estimate['shape'],rate=fit_gam$estimate['rate'])
-hist(test_data, breaks = 50)
+test_data_gamma <- rgamma(10000,shape=fit_gam$estimate['shape'],rate=fit_gam$estimate['rate'])
+hist(test_data_gamma, breaks = 30, xlim=c(0,450))
+```
+
+```{r KS-test}
+test_norm <- ks.test(filt$import_per_device, test_data_norm)
+test_gamma <- ks.test(filt$import_per_device, test_data_gamma)
+
+print(test_norm)
+print(test_gamma)
+```
+
+```{r AD-test}
+library(goftest)
+
+ressy <- ad.test(filt$import_per_device, null="pgamma", shape = fit_gam$estimate['shape'], rate = fit_gam$estimate['rate'])
+
+print(ressy)
+
 ```

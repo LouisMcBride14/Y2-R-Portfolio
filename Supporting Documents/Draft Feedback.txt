@@ -4,6 +4,6 @@ LO2: Nothing yet, use t / F-tests and compare models in evidence 3 [CHECK-ish (E
 
 LO3: Decent so far, but use approximate confidence intervals based on asymptotic theory from Y2 (Chapter 19.1) [CHECK]
 
-LO4: Good so far, maybe do another in another evidence piece?? [EVD4??]
+LO4: Good so far, maybe do another in another evidence piece??
 
 Overall: Make it easier to explain to stakeholder in the viva (less maths??)
