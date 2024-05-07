@@ -64,9 +64,6 @@ remove_outliers <- function(df, column) {
 }
 ```
   
-
-Please ensure that the evidence covers all of the following learning objectives:
-  
 LO1: Can apply methods concerning estimation of parameters in standard statistical models; in particular the method of moments and the maximum likelihood method.
 
 LO2: Can perform statistical hypotheses tests using data from studies (such as t and F-tests, comparison of models and parameter values).
@@ -125,7 +122,9 @@ hist(test_data, breaks = 30,
   
 ## Evidence 2 - Smart meter uptake in different regions
   
-Learning objective(s) assessed: **LO2 | LO4**
+Learning objective(s) assessed: **LO4**
+
+We have some data relating to the counts of smart and non-smart meters in each of our licence areas:
 
 ```{r 2.1-contingency-table}
 # Grabs the names of all 4 different licence areas
@@ -167,7 +166,7 @@ $-2\log(\Lambda)=2\sum\limits_{j=1}^{J}\sum\limits_{k=1}^{K}y_{jk}\log\left(\fra
 
 $\hat{e}_{jk}=\frac{y_{j\bullet}y_{\bullet k}}{n}$
 
-```{r 2.2-G-Test}
+```{r 2.2-G-Test, echo=FALSE}
 # Uses a G-Test (with no correction) to test the independence of the licence area and the type of meter used by customers
 results <- GTest(tab,correct="none")
 
@@ -196,10 +195,11 @@ Using the same maximum likelihood estimation method as before, we are able to fi
 ```{r 3.2-mle}
 # Fit gamma distribution to the subset data
 fit_gamma <- fitdistr(dat_lv$Value, densfun = "gamma")
-print(fit_gamma)
 
 # Gets number of rows in dataset
 n_rows <- length(dat_lv$Value)
+
+print(fit_gamma)
 ```
 As our dataset has a large number of observations (`r n_rows`), we are able to approximate
 the confidence intervals for the maximum likelihood estimators of both the shape and rate
@@ -215,27 +215,29 @@ The Fisher information of the rate parameter, ($\lambda$), is equal to $\frac{k}
 Using these formulas we can find a 95% confidence intervals for the MLEs we calculated earlier:
 
 ```{r 3.3-approximate-confidence-intervals}
-# Calculates the fisher information for shape using trigamma function
+# Calculates the Fisher information for shape using trigamma function
 shape_trigam <- trigamma(fit_gamma$estimate['shape'])
 
-shape_var <- 1/shape_trigam
+shape_var <- 1/shape_trigam  # Gets reciprocal of the Fisher information
 
-z_score <- 1.96  # Approximate standardised value for 95% conf int
+# Uses qnorm to find upper and lower confidence intervals
+shape_lwrb <- qnorm(0.025, mean=fit_gamma$estimate['shape'], sd=sqrt(shape_var))
+shape_uprb <- qnorm(0.975, mean=fit_gamma$estimate['shape'], sd=sqrt(shape_var))
 
-shape_lwrb <- fit_gamma$estimate['shape'] - z_score * sqrt(shape_var)
-shape_uprb <- fit_gamma$estimate['shape'] + z_score * sqrt(shape_var)
-
+# Calculates the Fisher information for rate using k/(lambda^2)
 rate_fisher <- fit_gamma$estimate['shape'] / (fit_gamma$estimate['rate']^2)
 
-rate_var <- 1/rate_fisher
+rate_var <- 1/rate_fisher # Gets reciprocal of the Fisher information
 
-rate_lwrb <- fit_gamma$estimate['rate'] - z_score * sqrt(rate_var)
-rate_uprb <- fit_gamma$estimate['rate'] + z_score * sqrt(rate_var)
+# Uses qnorm to find upper and lower confidence intervals
+rate_lwrb <- qnorm(0.025, mean=fit_gamma$estimate['rate'], sd=sqrt(rate_var))
+rate_uprb <- qnorm(0.975, mean=fit_gamma$estimate['rate'], sd=sqrt(rate_var))
 
-voltage_mean <- mean(dat_lv$Value)
+voltage_mean <- mean(dat_lv$Value)  # Average used in later method
 
+# Puts data into data frame for better formatting once printed
 ci_table <- data.frame(
-  Confidence_Intervals = c("2.5%", "97.5%"),
+  Confidence_Interval = c("2.5%", "97.5%"),
   Shape = c(shape_lwrb, shape_uprb),
   Rate = c(rate_lwrb, rate_uprb)
 )
@@ -310,7 +312,7 @@ faults <- faults[order(faults$interruption_date), ]
 faults$fault_interval <- NA  # Initialize the new column with NA
 
 for (i in 2:nrow(faults)) {
-  # Calculate time difference in minutes between current row and previous row
+  # Calculate time difference in seconds between current row and previous row
   interval <- difftime(faults$interruption_date[i], faults$interruption_date[i - 1], units = "secs")
   
   # Assign the calculated interval to the corresponding row in the new column
@@ -332,6 +334,7 @@ hist(faults$fault_interval, breaks=20, main="Distribution of time until next fau
 Plotting the distribution of intervals on a histogram we can see a clear exponential decay. With this knowledge, we can now try to fit our data to an exponential distribution to find an estimate for the rate ($\lambda$) parameter.
 
 ```{r 4.4-mle-exp}
+# gets MLE for lambda (rate) parameter
 fit_exp <- fitdistr(faults$fault_interval, densfun="exponential")
 
 print(fit_exp)
@@ -340,8 +343,10 @@ print(fit_exp)
 Once we have our estimate we can check it against a randomly generated exponential distribution with the same rate.
 
 ```{r 4.5-compare-rand-exp}
+# Generates a random exponential distribution with the MLE rate
 test_dat <- rexp(10000, rate=fit_exp$estimate)
 
+# Plots random distribution
 hist(test_dat, xlim = c(0, 1000), breaks = 50, main = "Distribution of random Exponential (lambda = 0.002978)", xlab = "Generated X value")
 ```
 
@@ -353,16 +358,19 @@ $E(X) = \frac{1}{\lambda}$
 
 We can find $\bar{X}$ (sample mean) by summing the time intervals and then dividing the result by the number of intervals in our data set.
 
-```{r 4.6-mom-exp}
-sum <- sum(faults$fault_interval)
+```{r 4.6-mom-exp, include=FALSE}
+# Sum and count for mean calc
+interval_sum <- format(sum(faults$fault_interval), scientific=TRUE)
 count <- length(faults$fault_interval)
 
+# Gets mean time interval between faults
 sample_mean <- mean(faults$fault_interval)
 
+# MoM for exponential
 lambda_estimate <- 1/sample_mean
 ```
 
-$\bar{X}$ = `r sum` / `r count` = `r sample_mean`
+$\bar{X}$ = `r interval_sum` / `r count` = `r sample_mean`
 
 Using the equations above we can say
 
